@@ -16,7 +16,7 @@ public class ObjFreqHashMap implements java.io.Serializable {
             this.freq = 1;
         }
         public String toString(){
-            return key.toString() + "appears " + freq + " times.";
+            return key.toString() + " appears " + freq + " times.";
         }
     }
 

@@ -1,3 +1,5 @@
+package mcmahon.wikiWordCompare;
+
 //import java.util.*;
 import java.io.*;
 

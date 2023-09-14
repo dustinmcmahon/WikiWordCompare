@@ -49,6 +49,7 @@ public class ParsePage {
             }
         }
         wordMap.printAll();
+        System.out.println("Unique Word Count: " + wordMap.count);
     }
 
     private Elements getParagraphs(){
@@ -87,6 +88,7 @@ public class ParsePage {
         tempString = tempString.replace(")", "");
         tempString = tempString.replace("(", "");
         tempString = tempString.replace("'s", "");
+        tempString = tempString.replace("\"", "");
 
         return tempString;
     }
@@ -99,6 +101,8 @@ public class ParsePage {
     private boolean extraWord(String word){
         boolean result = false;
 
+        if(word.equalsIgnoreCase("")) return true;
+        if(word.equalsIgnoreCase(" ")) return true;
         if(word.equalsIgnoreCase("a")) return true;
         if(word.equalsIgnoreCase("an")) return true;
         if(word.equalsIgnoreCase("the")) return true;
@@ -108,6 +112,8 @@ public class ParsePage {
         if(word.equalsIgnoreCase("this")) return true;
         if(word.equalsIgnoreCase("of")) return true;
         if(word.equalsIgnoreCase("and")) return true;
+        if(word.equalsIgnoreCase("for")) return true;
+        if(word.equalsIgnoreCase("with")) return true;
 
         return result;
     }

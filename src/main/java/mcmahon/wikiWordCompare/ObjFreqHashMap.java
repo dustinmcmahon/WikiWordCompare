@@ -88,6 +88,19 @@ public class ObjFreqHashMap implements java.io.Serializable {
         }
     }
 
+    public void addAll(ObjFreqHashMap theMap){
+        for (int i = 0; i < theMap.map.length; i++){
+            for (Node e = theMap.map[i]; e != null; e = e.next){
+                Node temp = this.get(e.key);
+                if (temp == null){
+                    add(e.key);
+                    temp = get(e.key);
+                } 
+                temp.freq += e.freq;
+            }
+        }
+    }
+
     public void printAll(){
         for(int i = 0; i < map.length; i++ ){
             for(Node e = map[i]; e != null; e = e.next){

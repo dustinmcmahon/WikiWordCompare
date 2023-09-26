@@ -20,6 +20,9 @@ public class ParsePage {
             website = Jsoup.connect(url).get();
             title = website.title();
             parseWebToMap();
+            wordMap.generateTF();
+            
+            //wordMap.printAll();
         } catch (IOException e){
             e.printStackTrace();
             website = null;
@@ -42,14 +45,15 @@ public class ParsePage {
 
                 pWords = tempString.split(" ");
                 for (String word : pWords){
-                    if(!extraWord(word)){
-                        wordMap.add(word.toLowerCase());
-                    }
+                    wordMap.add(word.toLowerCase());
                 }
             }
         }
+        /*
         wordMap.printAll();
-        System.out.println("Unique Word Count: " + wordMap.count);
+        System.out.println("Unique Word Count: " + wordMap.uniqueWords);
+        System.out.println("Total Word Count: " + wordMap.totalWords);
+         */
     }
 
     private Elements getParagraphs(){
@@ -64,7 +68,7 @@ public class ParsePage {
      */
     private void cleanUnparsable(){
         for(Element e: website.select("math")){
-            e.html("MathFunction");
+            e.html(" MathFunction ");
         }
         for(Element e: website.select("sup")){
             e.remove();
@@ -79,6 +83,9 @@ public class ParsePage {
     private String removeExtraChars(String theString){
         String tempString = theString;
 
+        tempString = tempString.replace("  ", " ");
+        tempString = tempString.replace("-", "");
+        tempString = tempString.replace("*", "");
         tempString = tempString.replace(".", "");
         tempString = tempString.replace(",", "");
         tempString = tempString.replace(":", "");
@@ -91,30 +98,5 @@ public class ParsePage {
         tempString = tempString.replace("\"", "");
 
         return tempString;
-    }
-
-    /**
-     * returns true if the word is considered 'extra'
-     * @param word
-     * @return
-     */
-    private boolean extraWord(String word){
-        boolean result = false;
-
-        if(word.equalsIgnoreCase("")) return true;
-        if(word.equalsIgnoreCase(" ")) return true;
-        if(word.equalsIgnoreCase("a")) return true;
-        if(word.equalsIgnoreCase("an")) return true;
-        if(word.equalsIgnoreCase("the")) return true;
-        if(word.equalsIgnoreCase("to")) return true;
-        if(word.equalsIgnoreCase("is")) return true;
-        if(word.equalsIgnoreCase("like")) return true;
-        if(word.equalsIgnoreCase("this")) return true;
-        if(word.equalsIgnoreCase("of")) return true;
-        if(word.equalsIgnoreCase("and")) return true;
-        if(word.equalsIgnoreCase("for")) return true;
-        if(word.equalsIgnoreCase("with")) return true;
-
-        return result;
     }
 }

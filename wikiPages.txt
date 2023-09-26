@@ -1,0 +1,13 @@
+https://en.wikipedia.org/wiki/Hash_table
+https://en.wikipedia.org/wiki/Tf%E2%80%93idf
+https://en.wikipedia.org/wiki/Dog
+https://en.wikipedia.org/wiki/Cat
+https://en.wikipedia.org/wiki/Ancient_Egypt
+https://en.wikipedia.org/wiki/Chess
+https://en.wikipedia.org/wiki/History_of_chess
+https://en.wikipedia.org/wiki/Checkers
+https://en.wikipedia.org/wiki/Rummy
+https://en.wikipedia.org/wiki/Poker
+https://en.wikipedia.org/wiki/Dot_product
+https://en.wikipedia.org/wiki/Cosine_similarity
+https://en.wikipedia.org/wiki/Semantic_similarity

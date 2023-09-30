@@ -82,7 +82,7 @@ public class ObjFreqHashMap implements java.io.Serializable {
         }
         totalWords++;
         if ((float)uniqueWords/map.length >= 0.75f){
-            resize();
+            resizeV2();
         }
     }
 
@@ -101,6 +101,7 @@ public class ObjFreqHashMap implements java.io.Serializable {
         }
     }
 
+    // do not use this for complex hash maps
     void resize() {
         Node[] oldTable = map;
         int oldCapacity = oldTable.length;

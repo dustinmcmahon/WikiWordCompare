@@ -99,4 +99,11 @@ public class ParsePage {
 
         return tempString;
     }
+
+    /**
+     * Override from Object to ensure the correct hash is used
+     */
+    public int hashCode(){
+        return website.hashCode();
+    }
 }

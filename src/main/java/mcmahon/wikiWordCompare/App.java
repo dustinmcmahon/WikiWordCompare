@@ -4,12 +4,17 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Scanner;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 
 public class App {
 
-    static final String IMPORTFILE = "wikiPages.txt";
+    static final String IMPORT_FILE = "wikiPages.txt";
+    static final String RANDOM_WIKI_URL = "https://en.wikipedia.org/wiki/Special:Random";
     
     static GUI gui;
     static ArrayList<ParsePage> parsedPages;
@@ -117,14 +122,19 @@ public class App {
     public static ArrayList<String> importWebsites(){
         ArrayList<String> result = new ArrayList<String>();
         try {
-            File importFile = new File(IMPORTFILE);
+            File importFile = new File(IMPORT_FILE);
             Scanner importReader = new Scanner(importFile);
             while (importReader.hasNextLine()){
                 result.add(importReader.nextLine());
             }
             importReader.close();
         } catch (FileNotFoundException e) {
-            System.out.println(IMPORTFILE + " Was Not Found!");
+            System.out.println(IMPORT_FILE + " Was Not Found!");
+            // create file
+            createImportFile();
+            // fill file with websites
+            fillImportFile();
+            importWebsites();
         }
         return result;
     }
@@ -157,5 +167,29 @@ public class App {
         }
     }
 
-    
+    private static void fillImportFile(){
+        Document newDoc;
+        File importFile = new File(IMPORT_FILE);
+        try{
+            FileWriter output = new FileWriter(importFile);
+            for(int i = 0; i < 100; i++){
+                newDoc = Jsoup.connect(RANDOM_WIKI_URL).get();
+                output.write(newDoc.location() + "\n");
+            }
+            output.close();
+        } catch (IOException e){
+            System.out.println("Error with website");
+            e.printStackTrace();
+        }
+    }
+
+    private static void createImportFile(){
+        File newFile = new File(IMPORT_FILE);
+        try{
+            newFile.createNewFile();
+        } catch (IOException e){
+            System.out.println("Error Creating File");
+            e.printStackTrace();
+        }
+    }
 }

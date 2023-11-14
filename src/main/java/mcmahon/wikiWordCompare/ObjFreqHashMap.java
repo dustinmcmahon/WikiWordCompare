@@ -162,21 +162,51 @@ public class ObjFreqHashMap implements java.io.Serializable {
         return key.hashCode() & (map.length - 1);
     }
 
-    private void writeObject(ObjectOutputStream s) throws Exception {
-        s.defaultWriteObject();
-        s.writeInt(uniqueWords);
-        for(int i = 0; i < map.length; i++ ){
-            for(Node e = map[i]; e != null; e = e.next){
-                s.writeObject(e);
+    private void writeObject(ObjectOutputStream s) {
+        try {
+            //s.defaultWriteObject();
+            s.writeInt(uniqueWords);
+            //System.out.println("Writing");
+            for(int i = 0; i < map.length; i++ ){
+                for(Node e = map[i]; e != null; e = e.next){
+                    //System.out.println(e.key + " x " + e.freq);
+                    s.writeObject(e.key);
+                    s.writeInt(e.freq);
+                    s.writeDouble(e.tf);
+                    s.writeDouble(e.idf);
+                    s.writeDouble(e.tfidf);
+                }
             }
+        } catch(IOException e){
+            System.out.println("Could not write ObjFreqHashMap");
+            e.printStackTrace();
         }
     }
 
-    private void readObject(ObjectInputStream s) throws Exception {
-        s.defaultReadObject();
-        int n = s.readInt();
-        for(int i = 0; i < n; i++){
-            add(s.readObject());
+    private void readObject(ObjectInputStream s) {
+        //s.defaultReadObject();
+        this.map = new Node[8];
+        totalWords = 0;
+        uniqueWords = 0;
+        try {
+            int n = s.readInt();
+            for(int i = 0; i < n; i++){
+                Object e = s.readObject();
+                int count = s.readInt();
+                for(int k = count; k > 0; k--){
+                    add(e); 
+                }
+                Node t = get(e);
+                t.tf = s.readDouble();
+                t.idf = s.readDouble();
+                t.tfidf = s.readDouble();
+            }
+        } catch(IOException e){
+            System.out.println("Could not read ObjFreqHashMap");
+            e.printStackTrace();
+        } catch(ClassNotFoundException e){
+            System.out.println("Could not find class ObjFreqHashMap");
+            e.printStackTrace();
         }
     }
 

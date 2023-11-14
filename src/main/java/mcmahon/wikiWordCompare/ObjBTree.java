@@ -468,4 +468,13 @@ public class ObjBTree implements java.io.Serializable {
             }
         }
     }
+
+    // public call into recursive call
+    public Object getSmallest(){
+        return root.getSmallest();
+    }
+
+    public Object getBiggest(){
+        return root.getBiggest();
+    }
 }

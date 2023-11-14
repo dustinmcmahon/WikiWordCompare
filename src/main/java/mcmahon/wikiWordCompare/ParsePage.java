@@ -2,39 +2,64 @@ package mcmahon.wikiWordCompare;
 
 import java.io.IOException;
 //import java.util.ArrayList;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-public class ParsePage {
+public class ParsePage implements java.io.Serializable {
     String url;
     String title;
-    Document website;
     ObjFreqHashMap wordMap = new ObjFreqHashMap();
 
     public ParsePage (String url) {
         this.url = url;
         try{
-            website = Jsoup.connect(url).get();
+            Document website = Jsoup.connect(url).get();
             title = website.title();
-            parseWebToMap();
+            parseWebToMap(website);
             wordMap.generateTF();
             
             //wordMap.printAll();
         } catch (IOException e){
             e.printStackTrace();
-            website = null;
             url += ": URL BROKEN";
             title = "Broken Page";
         }
     }
 
-    private void parseWebToMap(){
-        cleanUnparsable();
-        Elements paragraphs = getParagraphs();
+    private void writeObject(ObjectOutputStream s) {
+        try {
+            s.writeObject(url);
+            s.writeObject(title);
+            s.writeObject(wordMap);
+        } catch(IOException e){
+            System.out.println("Could not write ParsePage");
+            e.printStackTrace();
+        }
+    }
 
+    private void readObject(ObjectInputStream s) {
+        //s.defaultReadObject();
+        try{
+            url = (String)s.readObject();
+            title = (String)s.readObject();
+            wordMap = (ObjFreqHashMap)s.readObject();
+        } catch(IOException e){
+            System.out.println("Could not read ParsePage");
+            e.printStackTrace();
+        } catch(ClassNotFoundException e){
+            System.out.println("Could not find class");
+            e.printStackTrace();
+        }
+    }
+
+    private void parseWebToMap(Document website){
+        Elements paragraphs = getParagraphs(website);
+        paragraphs = cleanUnparsable(paragraphs);
         String tempString;
         String[] pWords;
         for (Element e : paragraphs){
@@ -56,7 +81,7 @@ public class ParsePage {
          */
     }
 
-    private Elements getParagraphs(){
+    private Elements getParagraphs(Document website){
         return website.select(".mw-parser-output p");
     }
 
@@ -66,13 +91,14 @@ public class ParsePage {
      * * replace '<math*</math>' with 'MathFunction'
      * * removing '<sup*</sup>'
      */
-    private void cleanUnparsable(){
-        for(Element e: website.select("math")){
+    private Elements cleanUnparsable(Elements paragraphs){
+        for(Element e: paragraphs.select("math")){
             e.html(" MathFunction ");
         }
-        for(Element e: website.select("sup")){
+        for(Element e: paragraphs.select("sup")){
             e.remove();
         }
+        return paragraphs;
     }
 
     /**
@@ -98,12 +124,5 @@ public class ParsePage {
         tempString = tempString.replace("\"", "");
 
         return tempString;
-    }
-
-    /**
-     * Override from Object to ensure the correct hash is used
-     */
-    public int hashCode(){
-        return website.hashCode();
     }
 }

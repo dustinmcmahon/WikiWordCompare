@@ -12,7 +12,7 @@ public class GUI extends JFrame {
     JButton clearBTN,okBTN;
     JLabel result1, result2;
 
-    public void initialize(ArrayList<ParsePage> pages){
+    public void initialize(ArrayList<Long> pages){
 
         JPanel initialPanel = new JPanel();
         initialPanel.setLayout(new BorderLayout());
@@ -47,7 +47,8 @@ public class GUI extends JFrame {
         website.setSelectedIndex(0);
     }
 
-    private JPanel inputPanel(ArrayList<ParsePage> pages){
+    //This needs to be updated, right now it is just writing the location
+    private JPanel inputPanel(ArrayList<Long> pages){
         JPanel inputPanel = new JPanel(new GridLayout(4, 1, 5, 5));
 
         JLabel catLabel = new JLabel("Key Word:");
@@ -61,7 +62,7 @@ public class GUI extends JFrame {
         website.setLayout(new BorderLayout(10,10));
         website.addItem("");
         for(int i = 0; i < pages.size(); i++){
-            website.addItem(pages.get(i).title);
+            website.addItem(pages.get(i).toString());
         }
 
         inputPanel.add(catLabel);

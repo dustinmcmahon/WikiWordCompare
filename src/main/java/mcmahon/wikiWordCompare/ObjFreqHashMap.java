@@ -2,19 +2,23 @@ package mcmahon.wikiWordCompare;
 
 //import java.util.*;
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CharsetEncoder;
 import java.util.ArrayList;
 
 public class ObjFreqHashMap implements java.io.Serializable {
 
     static final class Node {
-        public Object key;
+        public String key;
         public int freq;
         public Node next;
-        public double tf;
-        public double idf;
-        public double tfidf;
+        public double tf, idf, tfidf;
 
-        public Node(Object key, Node next){
+        public Node(String key, Node next){
             this.next = next;
             this.key = key;
             this.freq = 1;
@@ -70,7 +74,7 @@ public class ObjFreqHashMap implements java.io.Serializable {
      * if a key exists inclement that keys freq
      * if it does not exist, add a new one to the front of that index
      */
-    public void add(Object key){
+    public void add(String key){
         Node tempNode = get(key);
         if (tempNode != null){
             tempNode.freq++;
@@ -86,7 +90,7 @@ public class ObjFreqHashMap implements java.io.Serializable {
         }
     }
 
-    public void remove(Object key){
+    public void remove(String key){
         int i = getIndex(key);
         Node current = map[i], prior = null;
         while(current != null){
@@ -191,7 +195,7 @@ public class ObjFreqHashMap implements java.io.Serializable {
         try {
             int n = s.readInt();
             for(int i = 0; i < n; i++){
-                Object e = s.readObject();
+                String e = (String)s.readObject();
                 int count = s.readInt();
                 for(int k = count; k > 0; k--){
                     add(e); 
@@ -288,5 +292,182 @@ public class ObjFreqHashMap implements java.io.Serializable {
             result += a.get(i) * a.get(i);
         }
         return Math.sqrt(result);
+    }
+
+    /**
+     * This is a wrapper to handle any exceptions to make things look a bit cleaner
+     * @param fileLocation
+     * @param index
+     * @return
+     */
+    public static ObjFreqHashMap getMap(File fileLocation, long index){
+        ObjFreqHashMap result = null;
+        try{
+            result = _getMap(fileLocation, index);
+        } catch(Exception e){
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    /* The Read/Write order for this is:
+     * 1. word count
+     * 3. total words
+     * LOOP on word count
+     * 1. word length (int)
+     * 2. the word (String)
+     * 3. word freq (int)
+     * 4. tf (double)
+     * 5. idf (double)
+     * 6. tfidf (double)
+     */
+    private static ObjFreqHashMap _getMap(File fileLocation, long index) throws FileNotFoundException,IOException{
+        ObjFreqHashMap result = new ObjFreqHashMap();
+        
+        // used for decoding the strings
+        Charset cs = Charset.forName("UTF-8");
+        CharsetDecoder dec = cs.newDecoder();
+
+        FileInputStream inStream = new FileInputStream(fileLocation);
+        FileChannel inChannel = inStream.getChannel();
+        ByteBuffer bb = ByteBuffer.allocate(Integer.BYTES*2);
+        String word;
+        int length, count, numWords;
+
+        // set the channel to the start of the Object
+        inChannel.position(index);
+        inChannel.read(bb);
+        bb.position(0);
+        numWords = bb.getInt();
+        count = bb.getInt();
+
+        // get all the data for the next node and insert it into the result
+        for(int i = 0; i < numWords; i++){
+            // get length
+            bb = ByteBuffer.allocate(Integer.BYTES);
+            inChannel.read(bb);
+            bb.position(0);
+            length = bb.getInt();
+
+            // get word
+            bb = ByteBuffer.allocate(length);
+            inChannel.read(bb);
+            bb.position(0);
+            word = dec.decode(bb).toString();
+            
+            // the insert part
+            result.add(word);
+            Node temp = result.get(word);
+
+            // get count
+            bb = ByteBuffer.allocate(Integer.BYTES);
+            inChannel.read(bb);
+            bb.position(0);
+            temp.freq = bb.getInt();
+
+            // get tf
+            bb = ByteBuffer.allocate(Double.BYTES);
+            inChannel.read(bb);
+            bb.position(0);
+            temp.tf = bb.getDouble();
+
+            // get idf
+            bb.position(0);
+            inChannel.read(bb);
+            bb.position(0);
+            temp.idf = bb.getDouble();
+
+            // get tfidf
+            bb.position(0);
+            inChannel.read(bb);
+            bb.position(0);
+            temp.tfidf = bb.getDouble();
+        }
+
+        // set the total number of words
+        result.totalWords = count;
+
+        inChannel.close();
+        inStream.close();
+        return result;
+    }
+
+    public int insertMap(File fileLocation){
+        try{
+            return _insertMap(fileLocation, 0);
+        } catch (FileNotFoundException e){
+            System.out.println("InsertFile Not Found: " + fileLocation.getAbsolutePath());
+            e.printStackTrace();
+        } catch (IOException e){
+            System.out.println("File Stream Issue: " + fileLocation.getAbsolutePath());
+            e.printStackTrace();
+        }
+        // should only happen if there was an error inserting into the given file
+        return 0;
+    }
+
+    public int insertMap(File fileLocation, long index){
+        try{
+            return _insertMap(fileLocation, index);
+        } catch (FileNotFoundException e){
+            System.out.println("InsertFile Not Found: " + fileLocation.getAbsolutePath());
+            e.printStackTrace();
+        } catch (IOException e){
+            System.out.println("File Stream Issue: " + fileLocation.getAbsolutePath());
+            e.printStackTrace();
+        }
+        // should only happen if there was an error inserting into the given file
+        return 0;
+    }
+
+    /* The Read/Write order for this is:
+     * 1. word count
+     * 3. total words
+     * LOOP on word count
+     * 1. word length (int)
+     * 2. the word (String)
+     * 3. word freq (int)
+     * 4. tf (double)
+     * 5. idf (double)
+     * 6. tfidf (double)
+     */
+    private int _insertMap(File fileLocation, long index) throws FileNotFoundException,IOException{
+        // used for decoding the strings
+        Charset cs = Charset.forName("UTF-8");
+        CharsetEncoder enc = cs.newEncoder();
+
+        int size = Integer.BYTES*2;
+        FileOutputStream outStream = new FileOutputStream(fileLocation, true);
+        FileChannel outChannel = outStream.getChannel();
+        
+        ByteBuffer bb1 = ByteBuffer.allocate(size);
+        ByteBuffer bb2;
+
+        bb1.putInt(this.uniqueWords);
+        bb1.putInt(this.totalWords);
+
+        for(int i = 0; i < map.length; i++ ){
+            for(Node e = map[i]; e != null; e = e.next){
+                int wordSize = (int)(e.key.length() * 1.1);
+                size = bb1.capacity() + (Integer.BYTES * 2) + wordSize + (Double.BYTES * 3);
+                bb2 = ByteBuffer.allocate(size);
+                bb2.position(0);
+                bb1.position(0);
+                bb2.put(bb1);
+                bb2.putInt(wordSize);
+                bb2.put(enc.encode(CharBuffer.wrap(e.key)));
+                bb2.putInt(e.freq);
+                bb2.putDouble(e.tf);
+                bb2.putDouble(e.idf);
+                bb2.putDouble(e.tfidf);
+                bb1 = bb2;
+            }
+        }
+        if(index == -1) index = outChannel.size();
+        bb1.position(0);
+        size = outChannel.write(bb1, index);
+        outStream.close();
+
+        return size;
     }
 }

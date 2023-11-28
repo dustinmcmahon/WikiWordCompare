@@ -11,8 +11,12 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.concurrent.ThreadLocalRandom;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
@@ -22,22 +26,26 @@ public class App {
     static final String RANDOM_WIKI_URL = "https://en.wikipedia.org/wiki/Special:Random";
     static final String CLUSTER_FILE = "data\\clusterDataFile";
     static final String PAGE_FILE_PREFIX = "data\\pages";
-    static final int CLUSTER_CYCLE_COUNT = 10;
+    static final String PAGE_DATA = "data\\pData";
+    static final String PAGE_INDEX = "data\\pIndex";
+    static final int PAGE_COUNT = 100;
+    static final int CLUSTER_CYCLE_COUNT = 45000;
     static final int CLUSTER_NODE_COUNT = 5;
     
     static GUI gui;
-    static ArrayList<ParsePage> parsedPages;
-    static ArrayList<File> parsedPagesFileLocations;
+    static ArrayList<Long> parsedPagesIndexes;
     static SimCluster clusters;
     public static void main(String[] args) {
-        // read the pages if they exist already
+        // do import pages exist?
         if(!importPages()){
             // if they dont exist
             // create, parse, process and save the pages
-            ArrayList<String> webSites = importWebsites();
-            parsedPages = parseWebsites(webSites);
-            setTFIDF();
-            parsedPagesFileLocations = writeParsedPages();
+            // the create function returns the indexes of the pages as an arraylist
+            parsedPagesIndexes = create();
+        } else {
+            // if they do exist
+            // get the indexes of all saved & parsed pages
+            parsedPagesIndexes = readIndexes();
         }
 
         File clusterFile = new File(CLUSTER_FILE);
@@ -45,26 +53,21 @@ public class App {
 
         // cluster stuff
         if(clusterFile.exists()){
-            try{
-                ObjectInputStream clusterInStream = new ObjectInputStream(new FileInputStream(CLUSTER_FILE));
-                clusters = (SimCluster)clusterInStream.readObject();
-                clusterInStream.close();
-            } catch(IOException e){
-                e.printStackTrace();
-                System.out.println("Cluster Reading Failed, Delete Cluster File and try again");
-                return;
-            } catch(ClassNotFoundException e){
-                e.printStackTrace();
-                System.out.println("Cluster Class Not Found!");
-                return;
-            }
+            // recreates the best cluster from a prior run
+            clusters = getCluster(clusterFile, parsedPagesIndexes);
         } else { 
             // get the clusters
-            clusters = getBestCluster();
+            clusters = getBestCluster(parsedPagesIndexes);
             try{
-                ObjectOutputStream clusterOutStream = new ObjectOutputStream(new FileOutputStream(clusterFile));
-                clusterOutStream.writeObject(clusters);
-                clusterOutStream.close();
+                FileOutputStream outStream = new FileOutputStream(CLUSTER_FILE);
+                FileChannel outChannel = outStream.getChannel();
+                ByteBuffer bb = ByteBuffer.allocate(Long.BYTES*CLUSTER_NODE_COUNT);
+                for(int i = 0; i < clusters.centerIndexes.length; i++){
+                    bb.putLong(clusters.centerIndexes[i]);
+                }
+                bb.position(0);
+                outChannel.write(bb);
+                outStream.close();
             } catch(IOException e){
                 e.printStackTrace();
                 return;
@@ -73,7 +76,7 @@ public class App {
 
         gui = new GUI();
 
-        gui.initialize(parsedPages);
+        gui.initialize(parsedPagesIndexes);
 
         gui.okBTN.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e){
@@ -165,6 +168,46 @@ public class App {
         gui.displayResults(tempList);
     }
 
+    public static ArrayList<Long> create(){
+        ArrayList<Long> result = new ArrayList<Long>();
+        ArrayList<String> webSites = importWebsites();
+        ArrayList<ParsePage> parsedPages = parseWebsites(webSites);
+        parsedPages = setTFIDF(parsedPages);
+
+        result = writeParsedPages(parsedPages);
+
+        return result;
+    }
+
+    private static ArrayList<Long> writeParsedPages(ArrayList<ParsePage> parsedPages){
+        ArrayList<Long> result = new ArrayList<Long>();
+        File indexFile = new File(PAGE_INDEX);
+        File dataFile = new File(PAGE_DATA);
+        long location = 0;
+
+        try{
+            FileOutputStream outStream = new FileOutputStream(indexFile);
+            FileChannel outChannel = outStream.getChannel();
+            ByteBuffer bb = ByteBuffer.allocate(Long.BYTES*PAGE_COUNT);
+            for(ParsePage p: parsedPages){
+                long size = p.insertPage(dataFile,location);
+                bb.putLong(location);
+                result.add(location);
+                location += size;
+            }
+            bb.position(0);
+            outChannel.write(bb);
+            outStream.close();
+        } catch(FileNotFoundException e){
+            e.printStackTrace();
+        } catch(IOException e){
+            e.printStackTrace();
+        }
+
+
+        return result;
+    }
+
     public static ArrayList<String> importWebsites(){
         ArrayList<String> result = new ArrayList<String>();
         try {
@@ -180,7 +223,7 @@ public class App {
             createImportFile();
             // fill file with websites
             fillImportFile();
-            importWebsites();
+            result = importWebsites();
         }
         return result;
     }
@@ -193,7 +236,7 @@ public class App {
         return result;
     }
 
-    public static void setTFIDF(){
+    public static ArrayList<ParsePage> setTFIDF(ArrayList<ParsePage> parsedPages){
         for(int i = 0; i < parsedPages.size(); i++){
             ParsePage tempPage = parsedPages.get(i);
             for(int k = 0; k < tempPage.wordMap.map.length; k++){
@@ -211,6 +254,7 @@ public class App {
                 }
             }
         }
+        return parsedPages;
     }
 
     private static void fillImportFile(){
@@ -218,7 +262,7 @@ public class App {
         File importFile = new File(IMPORT_FILE);
         try{
             FileWriter output = new FileWriter(importFile);
-            for(int i = 0; i < 100; i++){
+            for(int i = 0; i < PAGE_COUNT; i++){
                 newDoc = Jsoup.connect(RANDOM_WIKI_URL).get();
                 output.write(newDoc.location() + "\n");
             }
@@ -230,79 +274,115 @@ public class App {
     }
 
     private static void createImportFile(){
-        File newFile = new File(IMPORT_FILE);
+        File importFile = new File(IMPORT_FILE);
+        File dataFile = new File(PAGE_DATA);
+        File indexFile = new File(PAGE_INDEX);
         try{
-            newFile.createNewFile();
+            importFile.createNewFile();
+            dataFile.createNewFile();
+            indexFile.createNewFile();
         } catch (IOException e){
             System.out.println("Error Creating File");
             e.printStackTrace();
         }
     }
 
+    /**
+     * 
+     * @return
+     */
     private static boolean importPages(){
-        int i = 0;
-        File importFile = new File(PAGE_FILE_PREFIX + i);
-        if(!importFile.exists()) return false;
-        do{
-            try{
-                parsedPagesFileLocations.add(i, importFile);
-                ObjectInputStream inStream = new ObjectInputStream(new FileInputStream(importFile));
-                parsedPages.add(i, (ParsePage)inStream.readObject());
-                inStream.close();
-            } catch(IOException e){
-                e.printStackTrace();
-                return false;
-            } catch(ClassNotFoundException e){
-                e.printStackTrace();
-                return false;
-            }
-            i++;
-            importFile = new File(PAGE_FILE_PREFIX + i);
-        }while(importFile.exists());
+        File importFile = new File(IMPORT_FILE);
+        File dataFile = new File(PAGE_DATA);
+        File indexFile = new File(PAGE_INDEX);
+        if(!(importFile.exists() && dataFile.exists() && indexFile.exists())) return false;
         return true;
     }
 
-    private static ArrayList<File> writeParsedPages(){
-        ArrayList<File> result = new ArrayList<File>();
+    private static ArrayList<Long> readIndexes(){
+        ArrayList<Long> result = new ArrayList<Long>();
+        try{
+            File indexFile = new File(PAGE_INDEX);
+            FileInputStream inStream = new FileInputStream(indexFile);
+            FileChannel inChannel = inStream.getChannel();
+            ByteBuffer bb = ByteBuffer.allocate(Long.BYTES);
 
-        File tempFolder = new File(PAGE_FILE_PREFIX);
-        tempFolder.mkdir();
-
-        for(int i = 0; i < parsedPages.size(); i++){
-            try{
-                File temp = new File(PAGE_FILE_PREFIX + "\\page" + i);
-                ObjectOutputStream outStream = new ObjectOutputStream(new FileOutputStream(temp));
-                outStream.writeObject(parsedPages.get(i));
-                outStream.close();
-                result.add(i, temp);
-            } catch(IOException e){
-                e.printStackTrace();
+            while(inChannel.position() < inChannel.size()){
+                inChannel.read(bb);
+                bb.position(0);
+                result.add(bb.getLong());
+                bb.position(0);
             }
+            inStream.close();
+        } catch(FileNotFoundException e){
+            e.printStackTrace();
+        } catch(IOException e){
+            e.printStackTrace();
         }
-
         return result;
     }
-
-    private static SimCluster getBestCluster(){
+   
+    private static SimCluster getBestCluster(ArrayList<Long> pageIndexes){
+        ArrayList<Long> goodIndexes = new ArrayList<Long>(pageIndexes);
         SimCluster result = null;
         SimCluster tempCluster;
         for(int i = 0; i < CLUSTER_CYCLE_COUNT; i++){
             tempCluster = new SimCluster(CLUSTER_NODE_COUNT);
             for(int k = 0; k < CLUSTER_NODE_COUNT; k++){
-                ParsePage thePage = parsedPages.get((int)(Math.random() * parsedPages.size()) + 1);
-                if(!tempCluster.isCenter(thePage)){
-                    tempCluster.addCenter(thePage);
+                int rand = ThreadLocalRandom.current().nextInt(goodIndexes.size());
+                long index = goodIndexes.get(rand);
+                ParsePage thePage = ParsePage.getPage(new File(PAGE_DATA), index);
+                if(!tempCluster.isCenter(index)){
+                    tempCluster.addCenter(thePage, index);
                 } else {
                     k--;
                 }
             }
-            for(int j = 0; j < parsedPagesFileLocations.size(); j++){
-                tempCluster.insert(parsedPagesFileLocations.get(j));
+            for(int j = 0; j < pageIndexes.size(); j++){
+                tempCluster.insert(pageIndexes.get(j));
             }
+            /* Tried this to make the clustering better
+            for(int l = 0; l < CLUSTER_NODE_COUNT; l++){
+                if(tempCluster.centerNodeTrees[l].root.count == 0){
+                    int badIndex = goodIndexes.indexOf(tempCluster.centerIndexes[l]);
+                    if(badIndex != -1) {
+                        goodIndexes.remove(badIndex);
+                        break;
+                    }
+                }
+            }
+            */
             if(result == null || tempCluster.isBetter(result)){
                 result = tempCluster;
             }
         }
+        return result;
+    }
+
+    private static SimCluster getCluster(File inFile, ArrayList<Long> indexes){
+        SimCluster result = new SimCluster(CLUSTER_NODE_COUNT);
+        try{
+            FileInputStream inStream = new FileInputStream(CLUSTER_FILE);
+            FileChannel inChannel = inStream.getChannel();
+            ByteBuffer bb = ByteBuffer.allocate(Long.BYTES*CLUSTER_NODE_COUNT);
+
+            inChannel.read(bb);
+            bb.position(0);
+            for(int i = 0; i < CLUSTER_NODE_COUNT; i++){
+                long l = bb.getLong();
+                result.addCenter(ParsePage.getPage(new File(PAGE_DATA), l), l);
+            }
+            inStream.close();
+
+            for(int i = 0; i < indexes.size(); i++){
+                result.insert(indexes.get(i));
+            }
+        } catch(FileNotFoundException e){
+            e.printStackTrace();
+        } catch(IOException e){
+            e.printStackTrace();
+        }
+
         return result;
     }
 }

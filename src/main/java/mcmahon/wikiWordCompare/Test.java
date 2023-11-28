@@ -8,6 +8,13 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CharsetEncoder;
 
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
@@ -15,6 +22,29 @@ import org.jsoup.nodes.Document;
 
 public class Test {
     public static void main(String[] args){
+        File testFile = new File("testFile");
+
+        ParsePage test1 = new ParsePage("https://en.wikipedia.org/wiki/Blueberry_River_(Minnesota)");
+        ParsePage test2 = new ParsePage("https://en.wikipedia.org/wiki/Edith_Lindeman");
+
+        long size1 = test1.insertPage(testFile, 0);
+        long size2 = test2.insertPage(testFile, size1);
+
+        ParsePage page1 = ParsePage.getPage(testFile, 0);
+        ParsePage page2 = ParsePage.getPage(testFile, size1);
+        
+        System.out.println("First Test");
+        System.out.println(test1.title);
+        System.out.println(page1.title);
+        System.out.println(size1);
+        
+        System.out.println("Second Test");
+        System.out.println(test2.title);
+        System.out.println(page2.title);
+        System.out.println(size2);
+        
+        //testBB();
+        /* 
         try{
             File temp = File.createTempFile("node", "obj", new File("data"));
             System.out.println(temp.getAbsolutePath());
@@ -26,8 +56,68 @@ public class Test {
         } catch (ClassNotFoundException e){
             e.printStackTrace();
         }
+        */
         //testGetUrl();
         //testTree();
+    }
+
+    private static void testBB(){
+        File testFile = new File("testFile");
+        if(!testFile.exists()) {
+            try{
+                testFile.createNewFile();
+            } catch(IOException e){
+                e.printStackTrace();
+            }
+        }
+        try{
+            Charset cs = Charset.forName("UTF-8");
+            CharsetEncoder enc = cs.newEncoder();
+            CharsetDecoder dec = cs.newDecoder();
+
+            RandomAccessFile raFile = new RandomAccessFile(testFile, "rw");
+            FileChannel fileCh = raFile.getChannel();
+            
+            String testString = "Test String!@#$%!";
+
+            int len = testString.length();
+            ByteBuffer bb = ByteBuffer.allocate(len);
+            ByteBuffer bb2 = ByteBuffer.allocate(len);
+            
+            bb = enc.encode(CharBuffer.wrap(testString));
+            System.out.println(fileCh.write(bb));
+            bb.position(0);
+            System.out.println(fileCh.write(bb));
+            fileCh.position(0);
+
+            System.out.println(fileCh.read(bb2));
+            bb2.position(0);
+
+            String testString2 = dec.decode(bb2).toString();
+
+            System.out.println(testString);
+            System.out.println(testString2);
+
+            fileCh.close();
+            raFile.close();
+        } catch(FileNotFoundException e){
+            e.printStackTrace();
+        } catch(IOException e){
+            e.printStackTrace();
+        }
+
+    }
+
+    private static ParsePage testGetBB(File input){
+        return ParsePage.getPage(input, 0);
+    }
+
+    private static ParsePage testStoreBB(File output) /*throws IOException*/{
+        ParsePage test = new ParsePage("https://en.wikipedia.org/wiki/Blueberry_River_(Minnesota)");
+        
+        System.out.println(test.insertPage(output));
+
+        return test;
     }
 
     private static ObjFreqHashMap testStore(File output) throws IOException{

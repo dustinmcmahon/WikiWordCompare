@@ -148,7 +148,7 @@ public class ObjBTree implements java.io.Serializable {
             }
             System.out.println("");
         }
-
+        /* 
         public void split(){
             if(parent == null) {
                 //System.out.println("Split children");
@@ -163,7 +163,6 @@ public class ObjBTree implements java.io.Serializable {
                 }
             } 
         }
-
         public void rotateToSibling(){
             int nodeIndex = -1, closestIndex = -1;
             for(int i = 0; i < parent.children.length; i++){
@@ -253,7 +252,8 @@ public class ObjBTree implements java.io.Serializable {
             }
             parent.insertChild(newRightNode);
         }
-
+        */
+        
         private void insertChild(Node newNode) {
             // no children
             // containing children
@@ -305,9 +305,58 @@ public class ObjBTree implements java.io.Serializable {
 
     private void insert(Object item, Node location){
         if(location.isLeaf() && location.isFull() ){
+            int current = -1;
+            if(location.parent == null){
+                splitToChildren(location);
+            }
+            // sibling with room
+            else if(!location.parent.childrenFull()){
+                // get the needed information to decide on rotate direction
+                int closest = -1;
+                for(int i = 0; i < location.parent.children.length && location.parent.children[i] != null; i++){
+                    if(location.parent.children[i] == location){
+                        current = i;
+                    } else if(!location.parent.children[i].isFull()){
+                        if(closest == -1 || current == -1 || Math.abs(i-current) < Math.abs(closest-current)){
+                            closest = i;
+                        }
+                    }
+                }
+                if(closest > current){
+                    // rotate right
+                    // if the object is greater than the item that would be rotated right
+                    // this created an infinite loop at one point
+                    if(location.biggestHash() < item.hashCode()){
+                        Object temp = location.getBiggest();
+                        location.removeBiggest();
+                        location.insertKey(item);
+                        insert(temp, location.parent);
+                    } else {
+                        rotateRight(location, current);
+                    }
+                } else {
+                    // rotate left
+                    // if the object is greater than the item that would be rotated right
+                    // this created an infinite loop at one point
+                    if(location.smallestHash() > item.hashCode()){
+                        Object temp = location.getSmallest();
+                        location.removeSmallest();
+                        location.insertKey(item);
+                        insert(temp, location.parent);
+                    } else {
+                        rotateLeft(location, current);
+                    }
+                }
+
+            } 
+            // ancestor with room
+            else {
+                splitToParent(location);
+            }
+
             // split if the leaf node is full and restart the algorithm
-            split(location);
-            insert(item);
+            /* split(location);
+            insert(item); */
         } else if(location.isLeaf()){
             // add the item into this leaf
             location.insertKey(item);
@@ -324,7 +373,7 @@ public class ObjBTree implements java.io.Serializable {
             insert(item, nextNode);
         }
     }
-
+    /* 
     private void split(Node e){
         if(e.parent == null){
             // split to children
@@ -358,7 +407,7 @@ public class ObjBTree implements java.io.Serializable {
             split(e);
         }
     }
-
+    */
     private void splitToChildren(Node e){
         Node left = new Node(e.order);
         Node right = new Node(e.order);
@@ -387,7 +436,7 @@ public class ObjBTree implements java.io.Serializable {
 
     private void rotateRight(Node e, int index){
         if(e.parent.children[index+1].isFull()){
-            split(e.parent.children[index+1]);
+            rotateRight(e.parent.children[index+1], index + 1);
         }
         Object biggest = e.getBiggest();
         Object newInsert = e.parent.keys[index];
@@ -398,7 +447,7 @@ public class ObjBTree implements java.io.Serializable {
 
     private void rotateLeft(Node e, int index){
         if(e.parent.children[index-1].isFull()){
-            split(e.parent.children[index-1]);
+            rotateLeft(e.parent.children[index-1], index-1);
         }
         Object smallest = e.getSmallest();
         Object newInsert = e.parent.keys[index-1];
@@ -411,7 +460,7 @@ public class ObjBTree implements java.io.Serializable {
         Node right = new Node(e.order);
         Object middle = null;
         if(e.parent.isFull()){
-            split(e.parent);
+            splitToParent(e.parent);
         }
         for(int i = 0; i < e.keys.length; i++){
             if(i > e.order / 2){

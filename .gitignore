@@ -1,2 +1,4 @@
 *.class
 /data/*
+testFile
+.vscode/settings.json

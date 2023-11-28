@@ -127,6 +127,101 @@ public class ParsePage implements java.io.Serializable {
         return tempString.replaceAll(" +", " ");
     }
 
+    public static String getUrl(File fileLocation, long index){
+        try{
+            return _getUrl(fileLocation, index);
+        } catch(FileNotFoundException e){
+            e.printStackTrace();
+        } catch(IOException e){
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+    private static String _getUrl(File fileLocation, long index) throws FileNotFoundException,IOException{
+        long i = index;
+        String result;
+        
+        // used for decoding the strings
+        Charset cs = Charset.forName("UTF-8");
+        CharsetDecoder dec = cs.newDecoder();
+
+        FileInputStream inStream = new FileInputStream(fileLocation);
+        FileChannel inChannel = inStream.getChannel();
+        ByteBuffer bb = ByteBuffer.allocate(Integer.BYTES);
+        int length;
+
+        // how big is the url
+        inChannel.read(bb, i);
+        i += Integer.BYTES;
+        bb.position(0);
+        length = bb.getInt();
+        bb = ByteBuffer.allocate(length);
+        inChannel.read(bb, i);
+        i = i + length;
+
+        // reset buffer then decode it to a string
+        bb.position(0);
+        result = dec.decode(bb).toString().trim();
+
+        inStream.close();
+        return result;
+    }
+
+    public static String getTitle(File fileLocation, long index){
+        try{
+            return _getTitle(fileLocation, index);
+        } catch(FileNotFoundException e){
+            e.printStackTrace();
+        } catch(IOException e){
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+    private static String _getTitle(File fileLocation, long index) throws FileNotFoundException,IOException{
+        long i = index;
+        String result;
+        
+        // used for decoding the strings
+        Charset cs = Charset.forName("UTF-8");
+        CharsetDecoder dec = cs.newDecoder();
+
+        FileInputStream inStream = new FileInputStream(fileLocation);
+        FileChannel inChannel = inStream.getChannel();
+        ByteBuffer bb = ByteBuffer.allocate(Integer.BYTES);
+        int length;
+
+        // how big is the url
+        inChannel.read(bb, i);
+        i += Integer.BYTES;
+        bb.position(0);
+        length = bb.getInt();
+        bb = ByteBuffer.allocate(length);
+        inChannel.read(bb, i);
+        i = i + length;
+
+        // reset buffer then decode it to a string
+        bb.position(0);
+        result = dec.decode(bb).toString().trim();
+
+        // how big is the title
+        bb = ByteBuffer.allocate(Integer.BYTES);
+        inChannel.read(bb, i);
+        i = i + Integer.BYTES;
+        bb.position(0);
+        length = bb.getInt();
+        bb = ByteBuffer.allocate(length);
+        inChannel.read(bb, i);
+        i = i + length;
+        // turn byte buffer into a char buffer then to a char array then into a string
+        bb.position(0);
+        result = dec.decode(bb).toString().trim();
+
+        inStream.close();
+        return result;
+    }
+
     public static ParsePage getPage(File fileLocation, long index){
         ParsePage result = null;
         try{

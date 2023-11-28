@@ -30,13 +30,14 @@ public class App {
     static final String PAGE_INDEX = "data\\pIndex";
     static final int PAGE_COUNT = 100;
     static final int CLUSTER_CYCLE_COUNT = 45000;
-    static final int CLUSTER_NODE_COUNT = 5;
+    static final int CLUSTER_NODE_COUNT = 8;
     
     static GUI gui;
-    static ArrayList<Long> parsedPagesIndexes;
     static SimCluster clusters;
     public static void main(String[] args) {
         // do import pages exist?
+        ArrayList<String> siteTitleList = new ArrayList<String>();
+        ArrayList<Long> parsedPagesIndexes;
         if(!importPages()){
             // if they dont exist
             // create, parse, process and save the pages
@@ -47,6 +48,7 @@ public class App {
             // get the indexes of all saved & parsed pages
             parsedPagesIndexes = readIndexes();
         }
+        siteTitleList = getTitleList(parsedPagesIndexes);
 
         File clusterFile = new File(CLUSTER_FILE);
         clusters = null;
@@ -54,6 +56,7 @@ public class App {
         // cluster stuff
         if(clusterFile.exists()){
             // recreates the best cluster from a prior run
+            // this may not be needed
             clusters = getCluster(clusterFile, parsedPagesIndexes);
         } else { 
             // get the clusters
@@ -76,7 +79,7 @@ public class App {
 
         gui = new GUI();
 
-        gui.initialize(parsedPagesIndexes);
+        gui.initialize(siteTitleList);
 
         gui.okBTN.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e){
@@ -99,14 +102,17 @@ public class App {
             return;
         }
 
-        ArrayList<ParsePage> tempList = new ArrayList<ParsePage>(parsedPages);
+        // required variables
+        ArrayList<Long> indexList = readIndexes(); 
+        ArrayList<ParsePage> tempList = new ArrayList<ParsePage>();
+        File pageDataFile = new File(App.PAGE_DATA);
+
         // has a keyword
         if(!keyword.equals("")){
-            for(int i = 0; i < tempList.size(); i++){
-                ParsePage tempPage = tempList.get(i);
-                if(tempPage.wordMap.get(keyword) == null){
-                    tempList.remove(i);
-                    i--;
+            for(int i = 0; i < indexList.size(); i++){
+                ParsePage tempPage = ParsePage.getPage(pageDataFile, indexList.get(i));
+                if(tempPage.wordMap.get(keyword) != null){
+                    tempList.add(tempPage);
                 }                 
             }
             // does not have a website
@@ -129,43 +135,60 @@ public class App {
         // picks the 2 with the highest cosine value
         if(!website.equals("")){
             // get the correct page from the master list
-            ParsePage tempPage = null;
-            for(int i = 0; i < parsedPages.size(); i++){
-                if(parsedPages.get(i).title.equals(website)){
-                    tempPage = parsedPages.get(i);
+            ParsePage givenPage = null;
+            long givenIndex = -1;
+            for(int i = 0; i < indexList.size(); i++){
+                ParsePage temp = ParsePage.getPage(pageDataFile, indexList.get(i));
+                if(temp.title.equals(website)){
+                    // set the page and then remove it from the list
+                    givenPage = temp;
+                    givenIndex = indexList.get(i);
+                    indexList.remove(i);
+                    break;
                 }
             }
             // page was found -could be assumed
-            if(tempPage != null){
-                // remove the page from temp list if it exists
-                for(int i = 0; i < tempList.size(); i++){
-                    if(tempList.get(i).title.equals(tempPage.title)){
-                        tempList.remove(i);
-                        break;
-                    }
-                }
+            if(givenPage != null){
 
                 // create a list of cosine similarity values
                 ArrayList<Double> simArrayList = new ArrayList<Double>();
-                for(int j = 0; j < tempList.size(); j++){
-                    simArrayList.add(tempPage.wordMap.cosSimilarity(tempList.get(j).wordMap));
+                for(int j = 0; j < indexList.size(); j++){
+                    ParsePage temp = ParsePage.getPage(pageDataFile, indexList.get(j));
+                    simArrayList.add(j, givenPage.wordMap.cosSimilarity(temp.wordMap));
                 }
 
                 // remove all but the highest 2 values
-                while(tempList.size() > 2){
+                while(simArrayList.size() > 2){
                     int lowest = 0;
-                    for(int k = 0; k < tempList.size(); k++){
+                    for(int k = 1; k < tempList.size(); k++){
                         if(simArrayList.get(k) < simArrayList.get(lowest)){
                             lowest = k;
                         }
                     }
                     simArrayList.remove(lowest);
-                    tempList.remove(lowest);
+                    indexList.remove(lowest);
                 }
+
+                for(int j = 0; j < indexList.size(); j++){
+                    tempList.add(ParsePage.getPage(pageDataFile, indexList.get(j)));
+                }
+
+                SimCluster cluster = getCluster(new File(App.CLUSTER_FILE), readIndexes());
+
+                ParsePage clusterHead = cluster.centerNodes[cluster.getCenterIndex(givenPage)];
+                long closestPageIndex = cluster.getClosest(givenPage,givenIndex);
+                ParsePage closestPage;
+                if(closestPageIndex == -1){
+                    closestPage = null;
+                } else {
+                    closestPage = ParsePage.getPage(pageDataFile, closestPageIndex);
+                }
+
+                gui.displayClusterResults(clusterHead, closestPage);
             }
         }
         
-        gui.displayResults(tempList);
+        gui.displaySimResults(tempList);
     }
 
     public static ArrayList<Long> create(){
@@ -381,6 +404,17 @@ public class App {
             e.printStackTrace();
         } catch(IOException e){
             e.printStackTrace();
+        }
+
+        return result;
+    }
+
+    private static ArrayList<String> getTitleList(ArrayList<Long> indexes){
+        File inFile = new File(PAGE_DATA);
+        ArrayList<String> result = new ArrayList<String>();
+
+        for(int i = 0; i < indexes.size(); i++){
+            result.add(i, ParsePage.getTitle(inFile, indexes.get(i)));
         }
 
         return result;

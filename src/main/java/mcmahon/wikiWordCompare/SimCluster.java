@@ -115,4 +115,41 @@ public class SimCluster {
         }
         return avgRange / centerCount;
     }
+
+    public int getCenterIndex(ParsePage page){
+        int bestIndex = -1;
+        double bestSim = -1;
+        for(int i = 0; i < centerNodes.length; i++){
+            double tempSim = centerNodes[i].wordMap.cosSimilarity(page.wordMap);
+            if(tempSim > bestSim){
+                bestIndex = i;
+                bestSim = tempSim;
+            }
+        }
+        return bestIndex;
+    }
+
+    public long getClosest(ParsePage page, long index){
+        int center = getCenterIndex(page);
+        double sim = centerNodes[center].wordMap.cosSimilarity(page.wordMap);
+        SimNode node = new SimNode(index, sim, page.title, page.url);
+        ObjBTree.Node pageNode = centerNodeTrees[center].getNode(node);
+        if(pageNode == null){
+            return -1;
+        }
+        SimNode closest = null;
+        if(pageNode.isLeaf()){
+            int bestDiff = 0;
+            for(int i = 0; i < pageNode.count; i++){
+                int curDiff = Math.abs(pageNode.keys[i].hashCode() - node.hashCode());
+                if(bestDiff < curDiff  && curDiff != 0){
+                    bestDiff = curDiff;
+                    closest = (SimNode)pageNode.keys[i];
+                }
+            }
+        } else {
+            closest = (SimNode)pageNode.getBiggest();
+        }
+        return closest.pageIndex;
+    }
 }

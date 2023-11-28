@@ -526,4 +526,31 @@ public class ObjBTree implements java.io.Serializable {
     public Object getBiggest(){
         return root.getBiggest();
     }
+
+    public Node getNode(Object item){
+        return getNode(root, item);
+    }
+
+    private Node getNode(Node loc, Object item){
+        Node result = null;
+
+        for(int i = 0; i < loc.count; i++){
+            if(loc.keys[i].hashCode() == item.hashCode()){
+                result = loc;
+            }
+        }
+        if(result == null && !loc.isLeaf()){
+            for(int i = 0; i < loc.count; i++){
+                if(loc.keys[i].hashCode() > item.hashCode()){
+                    result = loc.children[i];
+                }
+            }
+            if(result == null){
+                result = loc.children[loc.count];
+            }
+            result = getNode(result, item);
+        }
+
+        return result;
+    }
 }

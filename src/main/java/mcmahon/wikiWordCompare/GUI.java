@@ -3,6 +3,7 @@ package mcmahon.wikiWordCompare;
 import java.util.ArrayList;
 
 import java.awt.*;
+
 import javax.swing.*;
 
 public class GUI extends JFrame {
@@ -10,14 +11,17 @@ public class GUI extends JFrame {
     JTextField category;
     JComboBox<String> website;
     JButton clearBTN,okBTN;
-    JLabel result1, result2;
+    JPanel resultsPanel;
+    JLabel simResult1, simResult2, clusterCenterLabel, clusterClosestLabel;
+    ArrayList<String> titleList = new ArrayList<String>();
 
-    public void initialize(ArrayList<Long> pages){
+    public void initialize(ArrayList<String> pages){
 
         JPanel initialPanel = new JPanel();
         initialPanel.setLayout(new BorderLayout());
         initialPanel.add(inputPanel(pages), BorderLayout.NORTH);
-        initialPanel.add(resultPanel(), BorderLayout.CENTER);
+        resultsPanel = resultPanel();
+        initialPanel.add(resultsPanel, BorderLayout.CENTER);
         initialPanel.add(actionButtons(),BorderLayout.SOUTH);
         
         add(initialPanel);
@@ -28,27 +32,44 @@ public class GUI extends JFrame {
     }
 
     // display the results in the results frame
-    public void displayResults(ArrayList<ParsePage> results){
+    public void displaySimResults(ArrayList<ParsePage> results){  
+        simResult1.setText("");      
+        simResult2.setText("");      
         if(results.size() == 0){
-            result1.setText("No Result Found");
+            simResult1.setText("No Result Found");
         } 
         if(results.size() >= 1){
-            result1.setText(results.get(0).title + " :: " + results.get(0).url);
+            simResult1.setText(results.get(0).title + " :: " + results.get(0).url);
         } 
         if (results.size() >= 2) {
-            result2.setText(results.get(1).title + " :: " + results.get(1).url);
+            simResult2.setText(results.get(1).title + " :: " + results.get(1).url);
+        }
+    }
+
+    public void displayClusterResults(ParsePage clusterCenter, ParsePage closest){
+        clusterCenterLabel.setText("");
+        clusterClosestLabel.setText("");        
+        if(clusterCenter == null){
+            clusterCenterLabel.setText("No Cluster Found");
+        } else if(clusterCenter != null){
+            clusterCenterLabel.setText("Cluster Center: " + clusterCenter.title + " :: " + clusterCenter.url);
+        } 
+        if(closest != null) {
+            clusterClosestLabel.setText("Closest in Cluster: " + closest.title + " :: " + closest.url);
         }
     }
 
     public void clear(){
-        result1.setText("");
-        result2.setText("");
+        simResult1.setText("");
+        simResult2.setText("");
+        clusterCenterLabel.setText("");
+        clusterClosestLabel.setText("");
         category.setText("");
         website.setSelectedIndex(0);
     }
 
     //This needs to be updated, right now it is just writing the location
-    private JPanel inputPanel(ArrayList<Long> pages){
+    private JPanel inputPanel(ArrayList<String> pages){
         JPanel inputPanel = new JPanel(new GridLayout(4, 1, 5, 5));
 
         JLabel catLabel = new JLabel("Key Word:");
@@ -62,7 +83,7 @@ public class GUI extends JFrame {
         website.setLayout(new BorderLayout(10,10));
         website.addItem("");
         for(int i = 0; i < pages.size(); i++){
-            website.addItem(pages.get(i).toString());
+            website.addItem(pages.get(i));
         }
 
         inputPanel.add(catLabel);
@@ -74,12 +95,18 @@ public class GUI extends JFrame {
     }
 
     private JPanel resultPanel(){
-        JPanel resultPanel = new JPanel(new GridLayout(2, 1, 5, 5));
-        result1 = new JLabel("");
-        result2 = new JLabel("");
+        JPanel resultPanel = new JPanel(new GridLayout(2, 2, 5, 5));
+        simResult1 = new JLabel("");
+        simResult2 = new JLabel("");
 
-        resultPanel.add(result1);
-        resultPanel.add(result2);
+        resultPanel.add(simResult1);
+        resultPanel.add(simResult2);
+
+        clusterCenterLabel = new JLabel("");
+        clusterClosestLabel = new JLabel("");
+
+        resultPanel.add(clusterCenterLabel);
+        resultPanel.add(clusterClosestLabel);
 
         return resultPanel;
     }

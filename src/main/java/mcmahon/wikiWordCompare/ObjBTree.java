@@ -46,7 +46,9 @@ public class ObjBTree implements java.io.Serializable {
             }
             return count >= keys.length;
         }
-        
+        public boolean isFullNode(){
+            return count >= keys.length;
+        }
         public boolean childrenFull(){
             for(Node e: children){
                 if(e != null && !e.isFull()) return false;
@@ -459,7 +461,7 @@ public class ObjBTree implements java.io.Serializable {
     private void splitToParent(Node e){
         Node right = new Node(e.order);
         Object middle = null;
-        if(e.parent.isFull()){
+        if(e.parent.isFullNode()){
             splitToParent(e.parent);
         }
         for(int i = 0; i < e.keys.length; i++){
@@ -477,6 +479,7 @@ public class ObjBTree implements java.io.Serializable {
             }
         }
         right.insertChild(e.children[e.children.length -1]);
+        e.children[e.children.length -1] = null;
         e.parent.insertKey(middle);
         /*
         left.parent = e.parent;

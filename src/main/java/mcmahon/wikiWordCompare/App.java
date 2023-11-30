@@ -28,7 +28,7 @@ public class App {
     static final String PAGE_FILE_PREFIX = "data\\pages";
     static final String PAGE_DATA = "data\\pData";
     static final String PAGE_INDEX = "data\\pIndex";
-    static final int PAGE_COUNT = 100;
+    static final int PAGE_COUNT = 1000;
     static final int CLUSTER_CYCLE_COUNT = 45000;
     static final int CLUSTER_NODE_COUNT = 8;
     

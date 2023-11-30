@@ -102,6 +102,13 @@ public class SimCluster {
     public boolean isBetter(SimCluster cluster){
         if(this.failCount > cluster.failCount) return false;
         else if(this.failCount < cluster.failCount) return true;
+        int thisEmpty = 0, thatEmpty = 0;
+        for(int i = 0; i < centerCount; i++){
+            if(this.centerNodeTrees[i].root.count == 0) thisEmpty++;
+            if(cluster.centerNodeTrees[i].root.count == 0) thatEmpty++;
+        }
+        if(thisEmpty > thatEmpty) return false;
+        if(thisEmpty < thatEmpty) return true;
         return this.getDistance() > cluster.getDistance();
     }
 

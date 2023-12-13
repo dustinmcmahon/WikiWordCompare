@@ -25,11 +25,12 @@ public class App {
     static final String IMPORT_FILE = "data\\wikiPages.txt";
     static final String RANDOM_WIKI_URL = "https://en.wikipedia.org/wiki/Special:Random";
     static final String CLUSTER_FILE = "data\\clusterDataFile";
+    static final String MAP_FILE = "data\\mapDataFile";
     static final String PAGE_FILE_PREFIX = "data\\pages";
     static final String PAGE_DATA = "data\\pData";
     static final String PAGE_INDEX = "data\\pIndex";
     static final int PAGE_COUNT = 1000;
-    static final int CLUSTER_CYCLE_COUNT = 45000;
+    static final int CLUSTER_CYCLE_COUNT = 3000;
     static final int CLUSTER_NODE_COUNT = 8;
     
     static GUI gui;
@@ -75,6 +76,16 @@ public class App {
                 e.printStackTrace();
                 return;
             }
+        }
+
+        File mapFile = new File(MAP_FILE);
+        WikiGraph graph = null;
+
+        if(mapFile.exists()){
+            graph = WikiGraph.readFromFile(mapFile, PAGE_COUNT);
+        } else {
+            graph = new WikiGraph(new File(PAGE_INDEX), new File(PAGE_DATA), PAGE_COUNT);
+            graph.writeToFile(mapFile);            
         }
 
         gui = new GUI();
@@ -283,11 +294,18 @@ public class App {
     private static void fillImportFile(){
         Document newDoc;
         File importFile = new File(IMPORT_FILE);
+        ArrayList<String> importPages = new ArrayList<String>();
         try{
             FileWriter output = new FileWriter(importFile);
             for(int i = 0; i < PAGE_COUNT; i++){
                 newDoc = Jsoup.connect(RANDOM_WIKI_URL).get();
-                output.write(newDoc.location() + "\n");
+                if(importPages.contains(newDoc.location())){
+                    System.out.println("Duplicate Page");
+                    i--;
+                } else {
+                    importPages.add(newDoc.location());
+                    output.write(newDoc.location() + "\n");
+                }
             }
             output.close();
         } catch (IOException e){
@@ -346,6 +364,25 @@ public class App {
     }
    
     private static SimCluster getBestCluster(ArrayList<Long> pageIndexes){
+        final class BadClusterFreq{
+            long index;
+            int freq = 0;
+            BadClusterFreq(long index){
+                this.index = index;
+                this.freq = 1;
+            }
+            public void increase(){this.freq++;}
+            public boolean equals(Object o){
+                if(this == o) return true;
+                if(o instanceof BadClusterFreq){
+                    BadClusterFreq temp = (BadClusterFreq)o; 
+                    return this.index == temp.index;
+                }
+                return false;
+            }
+        }
+        
+        ArrayList<BadClusterFreq> badIndexes = new ArrayList<BadClusterFreq>();
         ArrayList<Long> goodIndexes = new ArrayList<Long>(pageIndexes);
         SimCluster result = null;
         SimCluster tempCluster;
@@ -364,21 +401,30 @@ public class App {
             for(int j = 0; j < pageIndexes.size(); j++){
                 tempCluster.insert(pageIndexes.get(j));
             }
-            /* Tried this to make the clustering better
-            for(int l = 0; l < CLUSTER_NODE_COUNT; l++){
+            for(int l = 0; l < tempCluster.centerNodeTrees.length; l++){
                 if(tempCluster.centerNodeTrees[l].root.count == 0){
-                    int badIndex = goodIndexes.indexOf(tempCluster.centerIndexes[l]);
-                    if(badIndex != -1) {
-                        goodIndexes.remove(badIndex);
-                        break;
+                    BadClusterFreq temp = new BadClusterFreq(tempCluster.centerIndexes[l]);
+                    int badIndex = badIndexes.indexOf(temp);
+                    if(badIndex == -1){
+                        badIndexes.add(temp);
+                    } else {
+                        badIndexes.get(badIndex).increase();
                     }
                 }
             }
-            */
+            for(int l = 0; l < badIndexes.size(); l++){
+                BadClusterFreq e = badIndexes.get(l);
+                if(e.freq > 10){
+                    goodIndexes.remove((Long)e.index);
+                    badIndexes.remove(e);
+                    l--;
+                }
+            }
             if(result == null || tempCluster.isBetter(result)){
                 result = tempCluster;
             }
         }
+        System.out.println("Cluster Finished");
         return result;
     }
 

@@ -264,9 +264,6 @@ public class ObjFreqHashMap implements java.io.Serializable {
                 }
             }
         }
-        if(aVect.size() == bVect.size()){
-            System.out.println();
-        }
         double dotProd = dotProduct(aVect, bVect);
 
         return dotProd / (magnitude(aVect) * magnitude(bVect));

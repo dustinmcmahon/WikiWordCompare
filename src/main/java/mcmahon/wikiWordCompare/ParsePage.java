@@ -317,6 +317,8 @@ public class ParsePage implements java.io.Serializable {
             return _insertPage(fileLocation, index);
         } catch(BufferOverflowException e){
             e.printStackTrace();
+            System.out.println(this.url);
+            System.out.println(this.title);
             System.out.println("Buffer OverFlow!");
         } catch (FileNotFoundException e){
             System.out.println("InsertFile Not Found: " + fileLocation.getAbsolutePath());
@@ -339,14 +341,14 @@ public class ParsePage implements java.io.Serializable {
 
         // https://stackoverflow.com/questions/25941286/what-is-the-length-of-a-string-encoded-in-a-bytebuffer
         // this page talks about the averageBytesPerChar function
-        int wordSize = (int)(this.url.length() * 1.1);
+        int wordSize = (int)(this.url.length() * 1.3);
         int size = Integer.BYTES + wordSize;
 
         ByteBuffer bb1 = ByteBuffer.allocate(size);
         bb1.putInt(wordSize);
         bb1.put(enc.encode(CharBuffer.wrap(this.url)));
 
-        wordSize = (int)(this.title.length() * 1.1);
+        wordSize = (int)(this.title.length() * 1.3);
         size += Integer.BYTES + wordSize;
 
         ByteBuffer bb2 = ByteBuffer.allocate(size);

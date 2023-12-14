@@ -15,13 +15,17 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
+import java.util.ArrayList;
 
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
+import mcmahon.wikiWordCompare.WikiGraph.MapNode;
+
 public class Test {
     public static void main(String[] args){
+        /* 
         File testFile = new File("testFile");
 
         ParsePage test1 = new ParsePage("https://en.wikipedia.org/wiki/Blueberry_River_(Minnesota)");
@@ -42,7 +46,16 @@ public class Test {
         System.out.println(test2.title);
         System.out.println(page2.title);
         System.out.println(size2);
-        
+        */
+
+        WikiGraph graph = WikiGraph.readFromFile(new File(App.MAP_FILE), App.PAGE_COUNT);
+
+        ArrayList<WikiGraph.MapNode> res = graph.shortestPath(2681399, 5211042);
+
+        for(WikiGraph.MapNode n: res){
+            System.out.println(n.location);
+        }
+
         //testBB();
         /* 
         try{

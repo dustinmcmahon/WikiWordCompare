@@ -15,7 +15,7 @@ public class WikiGraph {
     static final class MapNode{
 
         long location;
-        long[] edges = new long[4];
+        MapNode[] edges = new MapNode[4];
         int edgeCount = 0;
         // this is just used for shortest path
         boolean visited = false;
@@ -25,7 +25,7 @@ public class WikiGraph {
             this.location = wikiLocation;
         }
 
-        public void addEdge(long newEdge){
+        public void addEdge(MapNode newEdge){
             if(!isFull()){
                 edges[edgeCount] = newEdge;
                 edgeCount++;
@@ -46,6 +46,24 @@ public class WikiGraph {
             MapNode temp = (MapNode)e;
             return this.location == temp.location;
         }
+
+        /**
+         * this is a depth first search that seems to be getting me a much longer path than it should be
+         * @param destination
+         * @return
+         */
+        public boolean canReach(MapNode destination){
+            if(this.equals(destination)) return true;
+            if(this.visited) return false;
+            this.visited = true;
+            for(MapNode n: edges){
+                if(!n.visited){
+                    n.parent = this;
+                    if(n.canReach(destination)) return true;
+                }
+            }
+            return false;
+        }
     }
 
     static final class EdgeNode{
@@ -56,6 +74,12 @@ public class WikiGraph {
         public EdgeNode(long to, long from){
             this.to = to;
             this.from = from;
+        }
+
+        public boolean equals(Object e){
+            if(e.getClass() != this.getClass()) return false;
+            EdgeNode temp = (EdgeNode)e;
+            return (this.to == temp.to && this.from == temp.from) || (this.from == temp.to && this.to == temp.from);
         }
     }
 
@@ -189,8 +213,8 @@ public class WikiGraph {
                     addNode(tempMapNode);
                 }
                 // add edges to both Map Nodes
-                tempMapNode.addEdge(currFileIndex);
-                currentNode.addEdge(bestIndex[i]);
+                tempMapNode.addEdge(currentNode);
+                currentNode.addEdge(tempMapNode);
                 if(tempMapNode.isFull()){
                     // remove this website from possible websites if it is full
                     fileLocations.remove(new Long(bestIndex[i]));
@@ -228,7 +252,7 @@ public class WikiGraph {
                     if(!currentNode.visited){
                         currentNode.visited = true;
                         for(int i = 0; i < currentNode.edgeCount; i++){
-                            currentSet.add(nodes.get(nodes.indexOf(new MapNode(currentNode.edges[i]))));
+                            currentSet.add(currentNode.edges[i]);
                         }
                     }
                     currentSet.remove(0);
@@ -253,7 +277,54 @@ public class WikiGraph {
     }
 
     /**
+     * 
+     * @param source
+     * @param destination
+     * @return if there is a path, true is returned, false if there is no path
+     */
+    public boolean hasPath(long source, long destination){
+        clearParents();
+        MapNode sNode = nodes.get(nodes.indexOf(new MapNode(source)));
+        MapNode dNode = nodes.get(nodes.indexOf(new MapNode(destination)));
+        return sNode.canReach(dNode);
+    }
+
+    public ArrayList<MapNode> shortestPath(long source, long destination){
+        clearParents();
+        MapNode sNode = nodes.get(nodes.indexOf(new MapNode(source)));
+        MapNode dNode = nodes.get(nodes.indexOf(new MapNode(destination)));
+        MapNode tempNode;
+        ArrayList<MapNode> searchList = new ArrayList<MapNode>();
+        ArrayList<MapNode> result = new ArrayList<MapNode>();
+        searchList.add(sNode);
+
+        while(searchList.size() > 0){
+            tempNode = searchList.get(0);
+            if(tempNode.equals(dNode)) {
+                break;
+            }
+            for(MapNode e: tempNode.edges){
+                if(e != null && e.parent == null){
+                    e.parent = tempNode;
+                    searchList.add(e);
+                }
+            }
+            searchList.remove(0);
+        }
+
+        tempNode = dNode;
+        while(!tempNode.equals(sNode)){
+            result.add(tempNode);
+            tempNode = tempNode.parent;
+        }
+        result.add(sNode);
+
+        return result;
+    }
+
+    /**
      * This function writes the map to a file
+     * Wrapper function to catch exceptions
      */
     public void writeToFile(File nodeFile){
         if(nodes.size() == 0){
@@ -269,6 +340,9 @@ public class WikiGraph {
         }
     }
 
+    /**
+     * This function writes the map to a file
+     */
     private void _writeToFile(File nodeFile) throws FileNotFoundException, IOException{
         FileOutputStream nodeStream = new FileOutputStream(nodeFile);
         FileChannel nodeChannel = nodeStream.getChannel();
@@ -284,8 +358,9 @@ public class WikiGraph {
             bb.putLong(e.location);
             bb.putInt(e.edgeCount);
             for(int i = 0; i < e.edgeCount; i++){
-                bb.putLong(e.edges[i]);
+                bb.putLong(e.edges[i].location);
             }
+
             bb.position(0);
             nodeChannel.write(bb);
         }
@@ -294,7 +369,8 @@ public class WikiGraph {
     }
 
     /**
-     * This function reads 
+     * This function reads a Graph from a file
+     * Wrapper function to catch exceptions
      */
     public static WikiGraph readFromFile(File nodeFile, int mapSize){
         try{
@@ -307,6 +383,9 @@ public class WikiGraph {
         return null;
     }
 
+    /**
+     * This function reads a Graph from a file
+     */
     private static WikiGraph _readFromFile(File nodeFile, int mapSize) throws FileNotFoundException,IOException{
         WikiGraph result = new WikiGraph();
         
@@ -324,16 +403,27 @@ public class WikiGraph {
             bb.position(0);
             long loc = bb.getLong();
             MapNode n = new MapNode(loc);
+            if(result.nodes.contains(n)){
+                n = result.nodes.get(result.nodes.indexOf(n));
+            } else {
+                result.addNode(n);
+            }
             int count = bb.getInt();
             bb = ByteBuffer.allocate(Long.BYTES * count);
             inChannel.read(bb);
             bb.position(0);
             for(int j = 0; j < count; j++){
                 long e = bb.getLong();
-                n.addEdge(e);
-                result.addEdge(new EdgeNode(loc, e));
+                MapNode t = new MapNode(e);
+                if(result.nodes.contains(t)){
+                    t = result.nodes.get(result.nodes.indexOf(t));
+                } else {
+                    result.addNode(t);
+                }
+                n.addEdge(t);
+                EdgeNode tEdge = new EdgeNode(loc, e);
+                if(!result.edges.contains(tEdge))result.addEdge(tEdge);
             }
-            result.addNode(n);
         }
 
         inStream.close();

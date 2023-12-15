@@ -166,7 +166,7 @@ public class GUI extends JFrame {
             graphPanel.setLayout(new BorderLayout());
 
             // insert into the panel
-            graphPanel.add(graphInputs(pages), BorderLayout.NORTH);
+            graphPanel.add(graphInputs(pages,g.setCount), BorderLayout.NORTH);
             graphResultPanel = graphPanel(null);
             graphPanel.add(graphResultPanel, BorderLayout.CENTER);
             graphPanel.add(graphButtons(), BorderLayout.SOUTH);
@@ -180,8 +180,11 @@ public class GUI extends JFrame {
         setVisible(true);
     }
 
-    private JPanel graphInputs(ArrayList<String> pages){
-        JPanel inputPanel = new JPanel(new GridLayout(1, 2, 5, 5));
+    private JPanel graphInputs(ArrayList<String> pages, int setCount){
+        JPanel inputPanel = new JPanel(new GridLayout(2, 2, 5, 5));
+
+        inputPanel.add(new JLabel("Set Count: " + setCount));
+        inputPanel.add(new JLabel(""));
 
         simWebsite1 = new JComboBox<String>();
         simWebsite1.setLayout(new BorderLayout(10,10));

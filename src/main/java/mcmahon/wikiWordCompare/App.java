@@ -35,10 +35,12 @@ public class App {
     
     static GUI gui;
     static SimCluster clusters;
+    static WikiGraph graph;
+    static ArrayList<String> siteTitleList;
+    static ArrayList<Long> parsedPagesIndexes;
     public static void main(String[] args) {
         // do import pages exist?
-        ArrayList<String> siteTitleList = new ArrayList<String>();
-        ArrayList<Long> parsedPagesIndexes;
+        siteTitleList = new ArrayList<String>();
         if(!importPages()){
             // if they dont exist
             // create, parse, process and save the pages
@@ -79,7 +81,6 @@ public class App {
         }
 
         File mapFile = new File(MAP_FILE);
-        WikiGraph graph = null;
 
         if(mapFile.exists()){
             graph = WikiGraph.readFromFile(mapFile, PAGE_COUNT);
@@ -90,8 +91,9 @@ public class App {
 
         gui = new GUI();
 
-        gui.initialize(siteTitleList);
+        gui.initializeSim(siteTitleList);
 
+        /* 
         gui.okBTN.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e){
                 okButtonPressed();
@@ -103,6 +105,21 @@ public class App {
                 gui.clear();
             }
         });
+
+        gui.graphButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e){
+                gui.removeAll();
+                gui.initializeGraph(App.graph, App.siteTitleList);
+            }
+        });
+
+        gui.simButton.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent e){
+                gui.removeAll();
+                gui.initializeSim(App.siteTitleList);
+            }
+        });
+        */
     }
 
     public static void okButtonPressed(){
@@ -463,6 +480,26 @@ public class App {
             result.add(i, ParsePage.getTitle(inFile, indexes.get(i)));
         }
 
+        return result;
+    }
+
+    public static ArrayList<String> getPath(String website1, String website2){
+        ArrayList<String> result = new ArrayList<String>();
+        // do nothing if either website is blank
+        if(website1 != "" && website2 != ""){
+            File pageFile = new File(PAGE_DATA);
+            long site1 = -1, site2 = -1;
+            for(Long l: parsedPagesIndexes){
+                String title = ParsePage.getTitle(pageFile, l.longValue());
+                if(website1.equals(title)) site1 = l.longValue();
+                if(website2.equals(title)) site2 = l.longValue();
+                if(site1 != -1 && site2 != -1) break;
+            }
+            ArrayList<WikiGraph.MapNode> nodes = graph.shortestPath(site1, site2);
+            for(int i = nodes.size()-1; i >= 0; i--){
+                result.add(ParsePage.getTitle(pageFile,nodes.get(i).location));
+            }
+        }
         return result;
     }
 }

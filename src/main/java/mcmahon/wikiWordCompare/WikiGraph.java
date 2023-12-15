@@ -57,7 +57,7 @@ public class WikiGraph {
             if(this.visited) return false;
             this.visited = true;
             for(MapNode n: edges){
-                if(!n.visited){
+                if(n != null && !n.visited){
                     n.parent = this;
                     if(n.canReach(destination)) return true;
                 }
@@ -276,6 +276,13 @@ public class WikiGraph {
         }
     }
 
+    public void clear(){
+        for(MapNode e: nodes){
+            e.parent = null;
+            e.visited = false;
+        }
+    }
+
     /**
      * 
      * @param source
@@ -283,19 +290,20 @@ public class WikiGraph {
      * @return if there is a path, true is returned, false if there is no path
      */
     public boolean hasPath(long source, long destination){
-        clearParents();
+        clear();
         MapNode sNode = nodes.get(nodes.indexOf(new MapNode(source)));
         MapNode dNode = nodes.get(nodes.indexOf(new MapNode(destination)));
         return sNode.canReach(dNode);
     }
 
     public ArrayList<MapNode> shortestPath(long source, long destination){
-        clearParents();
+        ArrayList<MapNode> result = new ArrayList<MapNode>();
+        if(!hasPath(source, destination)) return result;
+        clear();
         MapNode sNode = nodes.get(nodes.indexOf(new MapNode(source)));
         MapNode dNode = nodes.get(nodes.indexOf(new MapNode(destination)));
         MapNode tempNode;
         ArrayList<MapNode> searchList = new ArrayList<MapNode>();
-        ArrayList<MapNode> result = new ArrayList<MapNode>();
         searchList.add(sNode);
 
         while(searchList.size() > 0){
